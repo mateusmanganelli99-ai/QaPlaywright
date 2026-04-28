@@ -29,7 +29,7 @@ namespace QaPlaywright.Pages
 
         public async Task IrParaCheckout()
         {
-            await _page.ClickAsync(".check_out");
+            await _page.ClickAsync("text=Proceed To Checkout");
         }
     }
 }
