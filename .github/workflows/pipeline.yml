@@ -1,0 +1,54 @@
+name: QA Full Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      CI: true
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --no-restore
+
+    - name: Install Playwright
+      run: |
+        dotnet tool install --global Microsoft.Playwright.CLI
+        playwright install --with-deps
+
+    - name: Run Tests (com relatório)
+      run: dotnet test --filter "Category=Smoke" --logger "html;LogFileName=report.html"
+
+    - name: Upload Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: report
+        path: '**/report.html'
+
+    - name: Upload Screenshots
+      uses: actions/upload-artifact@v4
+      with:
+        name: screenshots
+        path: screenshots/
+
+    - name: Upload Videos
+      uses: actions/upload-artifact@v4
+      with:
+        name: videos
+        path: videos/
