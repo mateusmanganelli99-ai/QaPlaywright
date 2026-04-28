@@ -15,24 +15,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout código
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore
-        run: dotnet restore
-
-      - name: Build
-        run: dotnet build --no-restore
-
-      - name: Install Playwright
-        run: |
-          dotnet tool install --global Microsoft.Playwright.CLI
-          playwright install --with-deps
+      - run: dotnet restore
+      - run: dotnet build --no-restore
 
   # 🔹 2. SMOKE TESTS
   smoke-tests:
@@ -48,6 +38,11 @@ jobs:
           dotnet-version: 8.0.x
 
       - run: dotnet restore
+      - run: dotnet build --no-restore
+
+      # 🔥 CORREÇÃO AQUI
+      - name: Install Playwright Browsers
+        run: pwsh bin/Debug/net8.0/playwright.ps1 install --with-deps
 
       - name: Run Smoke Tests
         run: dotnet test --filter "Category=Smoke" --logger "trx;LogFileName=smoke.trx"
@@ -56,7 +51,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: smoke-results
-          path: '**/smoke.trx'
+          path: "**/smoke.trx"
 
   # 🔹 3. E2E TESTS (PARALELO)
   e2e-tests:
@@ -67,7 +62,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]  # paralelismo
+        shard: [ 1, 2 ]
 
     steps:
       - uses: actions/checkout@v4
@@ -77,6 +72,11 @@ jobs:
           dotnet-version: 8.0.x
 
       - run: dotnet restore
+      - run: dotnet build --no-restore
+
+      # 🔥 CORREÇÃO AQUI
+      - name: Install Playwright Browsers
+        run: pwsh bin/Debug/net8.0/playwright.ps1 install --with-deps
 
       - name: Run E2E Tests
         run: dotnet test --logger "trx;LogFileName=e2e-${{ matrix.shard }}.trx"
@@ -106,4 +106,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: final-results
-          path: '**/*.trx'
+          path: "**/*.trx"
