@@ -15,6 +15,7 @@
           "NUnit.Allure": "1.2.1.1",
           "NUnit.Analyzers": "3.6.1",
           "NUnit3TestAdapter": "4.2.1",
+          "NunitXml.TestLogger": "8.0.0",
           "coverlet.collector": "6.0.0"
         },
         "runtime": {
@@ -407,6 +408,7 @@
       },
       "NUnit.Analyzers/3.6.1": {},
       "NUnit3TestAdapter/4.2.1": {},
+      "NunitXml.TestLogger/8.0.0": {},
       "System.ComponentModel.Annotations/5.0.0": {},
       "System.Reflection.Metadata/1.6.0": {},
       "System.Runtime.CompilerServices.Unsafe/6.0.0": {},
@@ -568,6 +570,13 @@
       "sha512": "sha512-kgH8VKsrcZZgNGQXRpVCrM7TnNz9li3b/snH+YmnXUNqsaWa1Xw9EQWHpbzq4Li2FbTjTE/E5N5HdLNXzZ8BpQ==",
       "path": "nunit3testadapter/4.2.1",
       "hashPath": "nunit3testadapter.4.2.1.nupkg.sha512"
+    },
+    "NunitXml.TestLogger/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-2a6ZitqCLjb3Lj3aYYKAe+6zMx/HVXqNVd/fXehHA+cNKZRB4wCxHu+PCb2r6DxospNCisMNjkPu1DYhnR+jyg==",
+      "path": "nunitxml.testlogger/8.0.0",
+      "hashPath": "nunitxml.testlogger.8.0.0.nupkg.sha512"
     },
     "System.ComponentModel.Annotations/5.0.0": {
       "type": "package",

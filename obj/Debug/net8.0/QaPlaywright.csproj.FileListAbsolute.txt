@@ -575,3 +575,6 @@ C:\Users\MateusFelipeFerreira\Qaplaywright\bin\Debug\net8.0\AspectInjector.Broke
 C:\Users\MateusFelipeFerreira\Qaplaywright\bin\Debug\net8.0\MimeTypesMap.dll
 C:\Users\MateusFelipeFerreira\Qaplaywright\bin\Debug\net8.0\NUnit.Allure.dll
 C:\Users\MateusFelipeFerreira\Qaplaywright\obj\Debug\net8.0\QaPlaywr.19017824.Up2Date
+C:\Users\MateusFelipeFerreira\QaPlaywright\obj\Debug\net8.0\QaPlaywright.sourcelink.json
+C:\Users\MateusFelipeFerreira\QaPlaywright\bin\Debug\net8.0\Microsoft.VisualStudio.TestPlatform.Extension.NUnit.Xml.TestLogger.dll
+C:\Users\MateusFelipeFerreira\QaPlaywright\bin\Debug\net8.0\Spekt.TestLogger.dll

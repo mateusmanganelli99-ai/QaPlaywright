@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("QaPlaywright")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3e27c223587ab53099ee2a8cf3b57562b50b6f11")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5e2f6cd2e9c2666600df42b4a3fbbab89f2fa14c")]
 [assembly: System.Reflection.AssemblyProductAttribute("QaPlaywright")]
 [assembly: System.Reflection.AssemblyTitleAttribute("QaPlaywright")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -52,4 +52,6 @@ public class BaseTest
         await Context.CloseAsync(); // 👈 necessário para salvar vídeo
         await Browser.CloseAsync();
     }
+
+    
 }
