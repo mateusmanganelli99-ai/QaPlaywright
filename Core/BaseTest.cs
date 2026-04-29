@@ -10,6 +10,8 @@ public class BaseTest
     protected IPage Page = null!;
     protected IBrowser Browser = null!;
     protected IBrowserContext Context = null!;
+    private string ArtifactsRoot => Environment.GetEnvironmentVariable("GITHUB_WORKSPACE")
+        ?? Directory.GetCurrentDirectory();
 
     [SetUp]
     public async Task Setup()
@@ -17,6 +19,9 @@ public class BaseTest
         Playwright = await Microsoft.Playwright.Playwright.CreateAsync();
 
         var isCI = Environment.GetEnvironmentVariable("CI") == "true";
+        var videosDir = Path.Combine(ArtifactsRoot, "videos");
+
+        Directory.CreateDirectory(videosDir);
 
         Browser = await Playwright.Chromium.LaunchAsync(new()
         {
@@ -25,7 +30,7 @@ public class BaseTest
 
         Context = await Browser.NewContextAsync(new()
         {
-            RecordVideoDir = "videos/",
+            RecordVideoDir = videosDir,
             RecordVideoSize = new() { Width = 1280, Height = 720 }
         });
 
@@ -40,11 +45,13 @@ public class BaseTest
 
         if (status == TestStatus.Failed && Page is not null)
         {
-            Directory.CreateDirectory("screenshots");
+            var screenshotsDir = Path.Combine(ArtifactsRoot, "screenshots");
+
+            Directory.CreateDirectory(screenshotsDir);
 
             await Page.ScreenshotAsync(new()
             {
-                Path = $"screenshots/{testName}.png",
+                Path = Path.Combine(screenshotsDir, $"{testName}.png"),
                 FullPage = true
             });
         }

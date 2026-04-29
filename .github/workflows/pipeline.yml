@@ -107,7 +107,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: videos
-          path: videos/
+          path: "**/videos/*.webm"
           if-no-files-found: ignore
 
       - name: Upload Screenshots
@@ -115,5 +115,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: screenshots
-          path: screenshots/
+          path: "**/screenshots/*.png"
           if-no-files-found: ignore
