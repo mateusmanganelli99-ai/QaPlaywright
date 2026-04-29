@@ -10,10 +10,24 @@ namespace QaPlaywright.Tests;
 public class CompraTests : BaseTest
 {
     [Test]
-    [TestCaseSource(nameof(DadosDeCadastro))]
+    [TestCaseSource(nameof(DadosSmoke))]
     [Retry(2)]
     [Category("Smoke")]
-    public async Task RealizarCompra(string nome, string email, string senha)
+    public async Task RealizarCompraSmoke(string nome, string email, string senha)
+    {
+        await ExecutarCompra(nome, email, senha);
+    }
+
+    [Test]
+    [TestCaseSource(nameof(DadosRegression))]
+    [Retry(2)]
+    [Category("Regression")]
+    public async Task RealizarCompraRegression(string nome, string email, string senha)
+    {
+        await ExecutarCompra(nome, email, senha);
+    }
+
+    private async Task ExecutarCompra(string nome, string email, string senha)
     {
         var login = new LoginPage(Page);
         var signup = new SignupPage(Page);
@@ -43,15 +57,25 @@ public class CompraTests : BaseTest
         TestContext.WriteLine("=== TESTE FINALIZADO COM SUCESSO ===");
     }
 
-    public static IEnumerable<TestCaseData> DadosDeCadastro()
+    public static IEnumerable<TestCaseData> DadosSmoke()
     {
-        for (var i = 1; i <= 3; i++)
+        return GerarDadosDeCadastro(3, "Smoke");
+    }
+
+    public static IEnumerable<TestCaseData> DadosRegression()
+    {
+        return GerarDadosDeCadastro(50, "Regression");
+    }
+
+    private static IEnumerable<TestCaseData> GerarDadosDeCadastro(int quantidade, string categoria)
+    {
+        for (var i = 1; i <= quantidade; i++)
         {
             yield return new TestCaseData(
                 FakerFactory.Nome(i),
                 FakerFactory.GerarEmail(i),
                 "123456")
-                .SetName($"RealizarCompra_Cadastro_{i}");
+                .SetName($"RealizarCompra_{categoria}_{i}");
         }
     }
 }
