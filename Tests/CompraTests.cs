@@ -10,9 +10,10 @@ namespace QaPlaywright.Tests;
 public class CompraTests : BaseTest
 {
     [Test]
-    [Retry(2)] // 🔥 anti-flaky
+    [TestCaseSource(nameof(DadosDeCadastro))]
+    [Retry(2)]
     [Category("Smoke")]
-    public async Task RealizarCompra()
+    public async Task RealizarCompra(string nome, string email, string senha)
     {
         var login = new LoginPage(Page);
         var signup = new SignupPage(Page);
@@ -20,33 +21,37 @@ public class CompraTests : BaseTest
         var cart = new CartPage(Page);
         var checkout = new CheckoutPage(Page);
 
-        var email = FakerFactory.GerarEmail();
-        var senha = "123456";
+        TestContext.WriteLine($"=== INICIO DO TESTE: {nome} / {email} ===");
 
-        TestContext.WriteLine("=== INÍCIO DO TESTE ===");
-
-        // 1. CRIAR USUÁRIO
         await login.Acessar();
-        await login.CriarUsuario("Mateus QA", email);
+        await login.CriarUsuario(nome, email);
         await signup.PreencherFormulario(senha);
 
-        // 2. VALIDAR LOGIN
         await Page.Locator("text=Logged in as").WaitForAsync();
 
-        // 3. PRODUTOS
         await products.AcessarProdutos();
         await products.AdicionarProduto(1);
         await products.AdicionarProduto(2);
 
-        // 4. CARRINHO
         await products.IrParaCarrinho();
         await cart.ValidarQuantidadeNoCarrinho(2);
         await cart.IrParaCheckout();
 
-        // 5. PAGAMENTO
         await checkout.PreencherPagamento();
         await checkout.ValidarCompra();
 
         TestContext.WriteLine("=== TESTE FINALIZADO COM SUCESSO ===");
+    }
+
+    public static IEnumerable<TestCaseData> DadosDeCadastro()
+    {
+        for (var i = 1; i <= 3; i++)
+        {
+            yield return new TestCaseData(
+                FakerFactory.Nome(i),
+                FakerFactory.GerarEmail(i),
+                "123456")
+                .SetName($"RealizarCompra_Cadastro_{i}");
+        }
     }
 }
