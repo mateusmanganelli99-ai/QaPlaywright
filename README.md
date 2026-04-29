@@ -248,6 +248,100 @@ O relatorio `e2e-summary.md` mostra:
 
 O mesmo conteudo tambem aparece no `GITHUB_STEP_SUMMARY` da execucao.
 
+## Azure DevOps
+
+O projeto tambem possui pipeline para Azure DevOps.
+
+Arquivo:
+
+```text
+azure-pipelines.yml
+```
+
+Essa pipeline segue a mesma ideia enterprise do GitHub Actions:
+
+- build e restore;
+- execucao E2E em paralelo;
+- publicacao de TRX;
+- videos do Playwright;
+- screenshots de falha;
+- Allure results, quando forem gerados;
+- relatorio Markdown;
+- quality gate final.
+
+### Como Configurar no Azure DevOps
+
+1. Acesse seu projeto no Azure DevOps.
+2. Va em `Pipelines`.
+3. Clique em `New pipeline`.
+4. Escolha `GitHub` ou `Azure Repos Git`, dependendo de onde esta o repositorio.
+5. Selecione este repositorio.
+6. Escolha `Existing Azure Pipelines YAML file`.
+7. Informe:
+
+```text
+/azure-pipelines.yml
+```
+
+8. Salve e execute.
+
+### Parametros Manuais
+
+Ao rodar manualmente no Azure DevOps, voce pode informar:
+
+| Parametro | Exemplo | Descricao |
+| --- | --- | --- |
+| `testFilter` | `Category=Smoke` | Roda somente os testes filtrados |
+| `workers` | `4` | Define a quantidade de workers paralelos |
+
+Exemplos de filtro:
+
+```text
+Category=Smoke
+Category=Regression
+```
+
+Se `testFilter` ficar vazio, a pipeline roda todos os 53 testes.
+
+### Stages no Azure
+
+A visualizacao da pipeline no Azure mostra:
+
+```text
+Build & Restore
+      |
+Parallel E2E Execution
+      |
+Publish Test Report
+      |
+Quality Gate
+```
+
+### Artefatos no Azure
+
+A pipeline publica:
+
+| Artifact | Conteudo |
+| --- | --- |
+| `test-results-trx` | Resultado TRX dos testes |
+| `playwright-videos` | Videos gravados pelo Playwright |
+| `failure-screenshots` | Screenshots quando houver falha |
+| `allure-results` | Resultados Allure quando gerados |
+| `test-reports` | Relatorio Markdown |
+
+### Test Results no Azure
+
+O step `PublishTestResults@2` envia o arquivo TRX para a aba de testes do Azure DevOps.
+
+Assim voce consegue ver:
+
+- testes executados;
+- testes aprovados;
+- testes falhados;
+- duracao;
+- historico por pipeline;
+- detalhes de erro por caso de teste.
+
 ## Comandos Uteis
 
 Listar testes:

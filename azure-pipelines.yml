@@ -1,0 +1,262 @@
+name: qa-playwright-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+parameters:
+  - name: testFilter
+    displayName: Test filter
+    type: string
+    default: ''
+
+  - name: workers
+    displayName: NUnit parallel workers
+    type: string
+    default: '4'
+
+variables:
+  DOTNET_VERSION: '8.0.x'
+  TEST_RESULTS_DIR: 'TestResults'
+  REPORTS_DIR: 'reports'
+  TRX_FILE: 'e2e.trx'
+  NUNIT_WORKERS: ${{ parameters.workers }}
+  TEST_FILTER: ${{ parameters.testFilter }}
+
+stages:
+  - stage: Build
+    displayName: Build & Restore
+    jobs:
+      - job: Build
+        displayName: Build solution
+        pool:
+          vmImage: ubuntu-latest
+        timeoutInMinutes: 10
+
+        steps:
+          - checkout: self
+
+          - task: UseDotNet@2
+            displayName: Setup .NET $(DOTNET_VERSION)
+            inputs:
+              packageType: sdk
+              version: $(DOTNET_VERSION)
+
+          - script: dotnet restore
+            displayName: Restore dependencies
+
+          - script: dotnet build --no-restore
+            displayName: Build solution
+
+  - stage: E2E
+    displayName: Parallel E2E Execution
+    dependsOn: Build
+    jobs:
+      - job: RunE2E
+        displayName: Run E2E tests ($(NUNIT_WORKERS) workers)
+        pool:
+          vmImage: ubuntu-latest
+        timeoutInMinutes: 90
+
+        steps:
+          - checkout: self
+
+          - task: UseDotNet@2
+            displayName: Setup .NET $(DOTNET_VERSION)
+            inputs:
+              packageType: sdk
+              version: $(DOTNET_VERSION)
+
+          - script: dotnet restore
+            displayName: Restore dependencies
+
+          - script: dotnet build --no-restore
+            displayName: Build test project
+
+          - pwsh: pwsh bin/Debug/net8.0/playwright.ps1 install --with-deps
+            displayName: Install Playwright browsers
+
+          - pwsh: |
+              Write-Host "Execution mode: Parallel"
+              Write-Host "NUnit workers: $env:NUNIT_WORKERS"
+              Write-Host "Test filter: $env:TEST_FILTER"
+
+              $args = @(
+                "test",
+                "--settings", "nunit.runsettings",
+                "--results-directory", $env:TEST_RESULTS_DIR,
+                "--logger", "trx;LogFileName=$env:TRX_FILE"
+              )
+
+              if (![string]::IsNullOrWhiteSpace($env:TEST_FILTER)) {
+                $args += @("--filter", $env:TEST_FILTER)
+              }
+
+              dotnet @args -- NUnit.NumberOfTestWorkers=$env:NUNIT_WORKERS
+              $exitCode = $LASTEXITCODE
+              Set-Content -Path test-exit-code.txt -Value $exitCode
+
+              if ($exitCode -ne 0) {
+                Write-Host "Tests finished with failures. Artifacts will still be published."
+              }
+            displayName: Run E2E tests in parallel
+            continueOnError: true
+
+          - task: PublishTestResults@2
+            displayName: Publish TRX test results
+            condition: always()
+            inputs:
+              testResultsFormat: VSTest
+              testResultsFiles: '$(TEST_RESULTS_DIR)/$(TRX_FILE)'
+              searchFolder: '$(System.DefaultWorkingDirectory)'
+              testRunTitle: 'QA Playwright E2E'
+              failTaskOnFailedTests: false
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish TRX artifact
+            condition: always()
+            inputs:
+              targetPath: '$(TEST_RESULTS_DIR)'
+              artifact: test-results-trx
+              publishLocation: pipeline
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Playwright videos
+            condition: always()
+            inputs:
+              targetPath: videos
+              artifact: playwright-videos
+              publishLocation: pipeline
+            continueOnError: true
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish failure screenshots
+            condition: always()
+            inputs:
+              targetPath: screenshots
+              artifact: failure-screenshots
+              publishLocation: pipeline
+            continueOnError: true
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Allure results
+            condition: always()
+            inputs:
+              targetPath: allure-results
+              artifact: allure-results
+              publishLocation: pipeline
+            continueOnError: true
+
+          - pwsh: |
+              $exitCode = 0
+              if (Test-Path test-exit-code.txt) {
+                $exitCode = [int](Get-Content test-exit-code.txt)
+              }
+
+              if ($exitCode -ne 0) {
+                throw "E2E tests failed. Check Test Results and pipeline artifacts."
+              }
+            displayName: Enforce E2E quality gate
+
+  - stage: Report
+    displayName: Publish Test Report
+    dependsOn: E2E
+    condition: always()
+    jobs:
+      - job: MarkdownReport
+        displayName: Generate Markdown report
+        pool:
+          vmImage: ubuntu-latest
+        timeoutInMinutes: 10
+
+        steps:
+          - task: DownloadPipelineArtifact@2
+            displayName: Download TRX artifact
+            inputs:
+              buildType: current
+              artifactName: test-results-trx
+              targetPath: downloaded-results
+            continueOnError: true
+
+          - pwsh: |
+              New-Item -ItemType Directory -Force -Path $env:REPORTS_DIR | Out-Null
+
+              $reportPath = Join-Path $env:REPORTS_DIR "e2e-summary.md"
+              $trxPath = Get-ChildItem -Path downloaded-results -Recurse -Filter $env:TRX_FILE -ErrorAction SilentlyContinue | Select-Object -First 1
+
+              if ($null -eq $trxPath) {
+                "# E2E Test Report`n`nTRX file was not found in downloaded artifacts." | Set-Content $reportPath
+                exit 0
+              }
+
+              [xml]$trx = Get-Content $trxPath.FullName
+              $counters = $trx.SelectSingleNode("//*[local-name()='Counters']")
+              $failedResults = $trx.SelectNodes("//*[local-name()='UnitTestResult' and @outcome!='Passed']")
+
+              $lines = @(
+                "# E2E Test Report",
+                "",
+                "## Execution",
+                "",
+                "| Item | Value |",
+                "| --- | --- |",
+                "| Mode | Parallel |",
+                "| NUnit workers | $env:NUNIT_WORKERS |",
+                "| Test filter | $env:TEST_FILTER |",
+                "",
+                "## Results",
+                "",
+                "| Total | Passed | Failed | Skipped |",
+                "| ---: | ---: | ---: | ---: |",
+                "| $($counters.total) | $($counters.passed) | $($counters.failed) | $($counters.notExecuted) |",
+                ""
+              )
+
+              if ($failedResults.Count -gt 0) {
+                $lines += "## Failed Tests"
+                $lines += ""
+
+                foreach ($result in $failedResults) {
+                  $lines += "- $($result.testName): $($result.outcome)"
+                }
+              }
+
+              $lines | Set-Content $reportPath
+            displayName: Generate enterprise Markdown report
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Markdown report
+            condition: always()
+            inputs:
+              targetPath: '$(REPORTS_DIR)'
+              artifact: test-reports
+              publishLocation: pipeline
+
+  - stage: QualityGate
+    displayName: Quality Gate
+    dependsOn:
+      - E2E
+      - Report
+    condition: always()
+    jobs:
+      - job: Gate
+        displayName: Validate pipeline result
+        pool:
+          vmImage: ubuntu-latest
+        timeoutInMinutes: 5
+
+        steps:
+          - pwsh: |
+              Write-Host "E2E stage result: ${{ dependencies.E2E.result }}"
+              Write-Host "Report stage result: ${{ dependencies.Report.result }}"
+
+              if ("${{ dependencies.E2E.result }}" -ne "Succeeded") {
+                throw "Quality gate failed because E2E stage did not succeed."
+              }
+            displayName: Validate quality gate
