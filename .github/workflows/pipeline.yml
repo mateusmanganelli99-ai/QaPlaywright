@@ -44,7 +44,7 @@ jobs:
         run: pwsh bin/Debug/net8.0/playwright.ps1 install --with-deps
 
       - name: Run E2E Tests
-        run: dotnet test --results-directory TestResults --logger "trx;LogFileName=e2e.trx"
+        run: dotnet test --settings nunit.runsettings --results-directory TestResults --logger "trx;LogFileName=e2e.trx"
 
       - name: Generate Test Report
         if: always()

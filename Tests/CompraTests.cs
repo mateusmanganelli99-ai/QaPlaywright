@@ -6,7 +6,8 @@ using QaPlaywright.Utils;
 namespace QaPlaywright.Tests;
 
 [TestFixture]
-[Parallelizable(ParallelScope.Self)]
+[FixtureLifeCycle(LifeCycle.InstancePerTestCase)]
+[Parallelizable(ParallelScope.Children)]
 public class CompraTests : BaseTest
 {
     [Test]
