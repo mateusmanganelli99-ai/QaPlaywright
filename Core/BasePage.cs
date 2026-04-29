@@ -3,18 +3,7 @@ using Microsoft.Playwright;
 namespace QaPlaywright.Core;
 
 /// <summary>
-/// BasePage - versão avançada (nível sênior)
-/// 
-/// RESPONSABILIDADES:
-/// - Centralizar ações da UI
-/// - Evitar flaky tests (esperas automáticas)
-/// - Adicionar logs
-/// - Facilitar debug (prints, mensagens)
-/// 
-/// PADRÕES APLICADOS:
-/// - Page Object Model (POM)
-/// - Reutilização de código
-/// - Robustez em automação UI
+/// BasePage centraliza acoes comuns de UI para os Page Objects.
 /// </summary>
 public class BasePage
 {
@@ -25,10 +14,6 @@ public class BasePage
         _page = page;
     }
 
-    /// <summary>
-    /// Aguarda elemento estar visível antes de interagir
-    /// Evita erro de elemento não encontrado
-    /// </summary>
     protected async Task WaitForVisible(string selector, int timeout = 5000)
     {
         Console.WriteLine($"[WAIT] Aguardando elemento: {selector}");
@@ -36,53 +21,42 @@ public class BasePage
         await _page.Locator(selector).WaitForAsync(new()
         {
             State = WaitForSelectorState.Visible,
-            Timeout = 1000
+            Timeout = timeout
         });
     }
 
-    /// <summary>
-    /// Clique com espera automática + log
-    /// </summary>
-    protected async Task Click(string selector)
+    protected async Task Click(string selector, int timeout = 5000)
     {
-        await _page.GetByRole(AriaRole.Link, new() { Name = "Cart" }).ClickAsync();
+        Console.WriteLine($"[CLICK] {selector}");
+
+        await WaitForVisible(selector, timeout);
+        await _page.ClickAsync(selector);
     }
 
-    /// <summary>
-    /// Preenchimento com espera + limpeza do campo
-    /// </summary>
-    protected async Task Fill(string selector, string text)
+    protected async Task Fill(string selector, string text, int timeout = 5000)
     {
         Console.WriteLine($"[FILL] {selector} = {text}");
 
-        await WaitForVisible(selector);
+        await WaitForVisible(selector, timeout);
         await _page.FillAsync(selector, text);
     }
 
-    /// <summary>
-    /// Valida se elemento está visível
-    /// </summary>
     protected async Task<bool> IsVisible(string selector)
     {
         return await _page.Locator(selector).IsVisibleAsync();
     }
 
-    /// <summary>
-    /// Aguarda URL conter um valor
-    /// Muito útil após navegação
-    /// </summary>
     protected async Task WaitForURL(string partialUrl)
     {
-        Console.WriteLine($"[WAIT URL] Contém: {partialUrl}");
+        Console.WriteLine($"[WAIT URL] Contem: {partialUrl}");
 
         await _page.WaitForURLAsync(url => url.Contains(partialUrl));
     }
 
-    /// <summary>
-    /// Screenshot manual (útil para debug)
-    /// </summary>
     protected async Task Screenshot(string nome = "screenshot")
     {
+        Directory.CreateDirectory("Reports");
+
         var path = $"Reports/{nome}_{DateTime.Now:yyyyMMdd_HHmmss}.png";
 
         Console.WriteLine($"[SCREENSHOT] {path}");
@@ -93,12 +67,9 @@ public class BasePage
             FullPage = true
         });
     }
-    public async Task EsperarElemento(string selector)
+
+    public async Task EsperarElemento(string selector, int timeout = 15000)
     {
-        await _page.Locator(selector).WaitForAsync(new()
-        {
-            State = WaitForSelectorState.Visible,
-            Timeout = 15000
-        });
+        await WaitForVisible(selector, timeout);
     }
 }

@@ -6,18 +6,19 @@ namespace QaPlaywright.Core;
 
 public class BaseTest
 {
-    protected IPage Page;
-    protected IBrowser Browser;
-    protected IBrowserContext Context;
+    protected IPlaywright Playwright = null!;
+    protected IPage Page = null!;
+    protected IBrowser Browser = null!;
+    protected IBrowserContext Context = null!;
 
     [SetUp]
     public async Task Setup()
     {
-        var playwright = await Playwright.CreateAsync();
+        Playwright = await Microsoft.Playwright.Playwright.CreateAsync();
 
-        bool isCI = Environment.GetEnvironmentVariable("CI") == "true";
+        var isCI = Environment.GetEnvironmentVariable("CI") == "true";
 
-        Browser = await playwright.Chromium.LaunchAsync(new()
+        Browser = await Playwright.Chromium.LaunchAsync(new()
         {
             Headless = isCI
         });
@@ -37,8 +38,7 @@ public class BaseTest
         var testName = TestContext.CurrentContext.Test.Name;
         var status = TestContext.CurrentContext.Result.Outcome.Status;
 
-        // 📸 Screenshot em erro
-        if (status == TestStatus.Failed)
+        if (status == TestStatus.Failed && Page is not null)
         {
             Directory.CreateDirectory("screenshots");
 
@@ -49,9 +49,16 @@ public class BaseTest
             });
         }
 
-        await Context.CloseAsync(); // 👈 necessário para salvar vídeo
-        await Browser.CloseAsync();
-    }
+        if (Context is not null)
+        {
+            await Context.CloseAsync();
+        }
 
-    
+        if (Browser is not null)
+        {
+            await Browser.CloseAsync();
+        }
+
+        Playwright?.Dispose();
+    }
 }

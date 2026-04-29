@@ -1,5 +1,4 @@
 using Microsoft.Playwright;
-using System.Net.Http;
 
 namespace QaPlaywright.API;
 
@@ -14,16 +13,14 @@ public class UserService
 
     public async Task<IAPIResponse> CriarUsuario(string nome, string email, string senha)
     {
-        var form = new MultipartFormDataContent
-        {
-            { new StringContent(nome), "name" },
-            { new StringContent(email), "email" },
-            { new StringContent(senha), "password" }
-        };
+        var form = _api.CreateFormData();
+        form.Set("name", nome);
+        form.Set("email", email);
+        form.Set("password", senha);
 
         return await _api.PostAsync("/createAccount", new APIRequestContextOptions
         {
-
+            Form = form
         });
     }
 }
