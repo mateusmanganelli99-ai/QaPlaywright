@@ -11,24 +11,11 @@ namespace QaPlaywright.Tests;
 public class CompraTests : BaseTest
 {
     [Test]
-    [TestCaseSource(nameof(DadosSmoke))]
+    [TestCaseSource(nameof(CenariosDeCompra))]
     [Retry(2)]
-    [Category("Smoke")]
-    public async Task RealizarCompraSmoke(string nome, string email, string senha)
-    {
-        await ExecutarCompra(nome, email, senha);
-    }
-
-    [Test]
-    [TestCaseSource(nameof(DadosRegression))]
-    [Retry(2)]
-    [Category("Regression")]
-    public async Task RealizarCompraRegression(string nome, string email, string senha)
-    {
-        await ExecutarCompra(nome, email, senha);
-    }
-
-    private async Task ExecutarCompra(string nome, string email, string senha)
+    [Category("E2E")]
+    [Category("Compra")]
+    public async Task RealizarCompra(string cenario, string nome, string email, string senha, int[] produtos)
     {
         var login = new LoginPage(Page);
         var signup = new SignupPage(Page);
@@ -36,7 +23,8 @@ public class CompraTests : BaseTest
         var cart = new CartPage(Page);
         var checkout = new CheckoutPage(Page);
 
-        TestContext.WriteLine($"=== INICIO DO TESTE: {nome} / {email} ===");
+        TestContext.WriteLine($"=== INICIO DO CENARIO: {cenario} ===");
+        TestContext.WriteLine($"Usuario: {nome} / {email}");
 
         await login.Acessar();
         await login.CriarUsuario(nome, email);
@@ -45,38 +33,44 @@ public class CompraTests : BaseTest
         await Page.Locator("text=Logged in as").WaitForAsync();
 
         await products.AcessarProdutos();
-        await products.AdicionarProduto(1);
-        await products.AdicionarProduto(2);
+
+        foreach (var produto in produtos)
+        {
+            await products.AdicionarProduto(produto);
+        }
 
         await products.IrParaCarrinho();
-        await cart.ValidarQuantidadeNoCarrinho(2);
+        await cart.ValidarQuantidadeNoCarrinho(produtos.Length);
         await cart.IrParaCheckout();
 
         await checkout.PreencherPagamento();
         await checkout.ValidarCompra();
 
-        TestContext.WriteLine("=== TESTE FINALIZADO COM SUCESSO ===");
+        TestContext.WriteLine("=== CENARIO FINALIZADO COM SUCESSO ===");
     }
 
-    public static IEnumerable<TestCaseData> DadosSmoke()
+    public static IEnumerable<TestCaseData> CenariosDeCompra()
     {
-        return GerarDadosDeCadastro(3, "Smoke");
+        yield return CriarCenario(1, "Compra_Produto_1", new[] { 1 });
+        yield return CriarCenario(2, "Compra_Produto_2", new[] { 2 });
+        yield return CriarCenario(3, "Compra_Produto_3", new[] { 3 });
+        yield return CriarCenario(4, "Compra_Produtos_1_2", new[] { 1, 2 });
+        yield return CriarCenario(5, "Compra_Produtos_2_3", new[] { 2, 3 });
+        yield return CriarCenario(6, "Compra_Produtos_3_4", new[] { 3, 4 });
+        yield return CriarCenario(7, "Compra_Produtos_4_5", new[] { 4, 5 });
+        yield return CriarCenario(8, "Compra_Produtos_1_3_5", new[] { 1, 3, 5 });
+        yield return CriarCenario(9, "Compra_Produtos_2_4_6", new[] { 2, 4, 6 });
+        yield return CriarCenario(10, "Compra_Produtos_1_2_3_4", new[] { 1, 2, 3, 4 });
     }
 
-    public static IEnumerable<TestCaseData> DadosRegression()
+    private static TestCaseData CriarCenario(int indice, string nomeCenario, int[] produtos)
     {
-        return GerarDadosDeCadastro(12, "Regression");
-    }
-
-    private static IEnumerable<TestCaseData> GerarDadosDeCadastro(int quantidade, string categoria)
-    {
-        for (var i = 1; i <= quantidade; i++)
-        {
-            yield return new TestCaseData(
-                FakerFactory.Nome(i),
-                FakerFactory.GerarEmail(i),
-                "123456")
-                .SetName($"RealizarCompra_{categoria}_{i}");
-        }
+        return new TestCaseData(
+            nomeCenario,
+            FakerFactory.Nome(indice),
+            FakerFactory.GerarEmail(indice),
+            "123456",
+            produtos)
+            .SetName($"Cenario_{indice:00}_{nomeCenario}");
     }
 }

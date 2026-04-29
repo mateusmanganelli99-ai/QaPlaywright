@@ -29,7 +29,7 @@ Pages/
   CheckoutPage.cs
 
 Tests/
-  CompraTests.cs    Testes Smoke e Regression
+  CompraTests.cs    Cenarios E2E de compra
 
 Utils/
   FakerFactory.cs   Massa dinamica de cadastro
@@ -52,37 +52,28 @@ O teste principal executa o fluxo:
 2. Cria um usuario novo com e-mail dinamico.
 3. Valida usuario logado.
 4. Acessa produtos.
-5. Adiciona dois produtos ao carrinho.
+5. Adiciona um ou mais produtos ao carrinho, conforme o cenario.
 6. Valida quantidade no carrinho.
 7. Realiza checkout.
 8. Preenche pagamento.
 9. Valida pedido finalizado.
 
-## Massa de Testes
+## Cenarios de Teste
 
-Hoje existem dois grupos:
+Hoje existem 10 cenarios E2E de compra:
 
-| Categoria | Quantidade | Uso |
-| --- | ---: | --- |
-| Smoke | 3 | Validacao rapida do fluxo |
-| Regression | 50 | Massa maior para validacao pesada |
-
-Total descoberto pelo NUnit:
-
-```text
-53 testes
-```
-
-Os nomes aparecem assim:
-
-```text
-RealizarCompra_Smoke_1
-RealizarCompra_Smoke_2
-RealizarCompra_Smoke_3
-RealizarCompra_Regression_1
-...
-RealizarCompra_Regression_50
-```
+| Cenario | Produtos |
+| --- | --- |
+| `Cenario_01_Compra_Produto_1` | Produto 1 |
+| `Cenario_02_Compra_Produto_2` | Produto 2 |
+| `Cenario_03_Compra_Produto_3` | Produto 3 |
+| `Cenario_04_Compra_Produtos_1_2` | Produtos 1 e 2 |
+| `Cenario_05_Compra_Produtos_2_3` | Produtos 2 e 3 |
+| `Cenario_06_Compra_Produtos_3_4` | Produtos 3 e 4 |
+| `Cenario_07_Compra_Produtos_4_5` | Produtos 4 e 5 |
+| `Cenario_08_Compra_Produtos_1_3_5` | Produtos 1, 3 e 5 |
+| `Cenario_09_Compra_Produtos_2_4_6` | Produtos 2, 4 e 6 |
+| `Cenario_10_Compra_Produtos_1_2_3_4` | Produtos 1, 2, 3 e 4 |
 
 ## Paralelismo
 
@@ -139,16 +130,16 @@ Rodar todos os testes:
 dotnet test --settings nunit.runsettings
 ```
 
-Rodar somente Smoke:
+Rodar somente cenarios E2E:
 
 ```bash
-dotnet test --filter "Category=Smoke" --settings nunit.runsettings
+dotnet test --filter "Category=E2E" --settings nunit.runsettings
 ```
 
-Rodar somente Regression:
+Rodar somente cenarios de compra:
 
 ```bash
-dotnet test --filter "Category=Regression" --settings nunit.runsettings
+dotnet test --filter "Category=Compra" --settings nunit.runsettings
 ```
 
 Rodar com resultado TRX:
@@ -190,7 +181,7 @@ Na execucao manual e possivel informar:
 
 | Input | Exemplo | Descricao |
 | --- | --- | --- |
-| `test_filter` | `Category=Smoke` | Filtro do `dotnet test` |
+| `test_filter` | `Category=Compra` | Filtro do `dotnet test` |
 | `workers` | `4` | Quantidade de workers paralelos |
 
 Se `test_filter` ficar vazio, a pipeline roda todos os testes.
@@ -291,17 +282,17 @@ Ao rodar manualmente no Azure DevOps, voce pode informar:
 
 | Parametro | Exemplo | Descricao |
 | --- | --- | --- |
-| `testFilter` | `Category=Smoke` | Roda somente os testes filtrados |
+| `testFilter` | `Category=Compra` | Roda somente os testes filtrados |
 | `workers` | `4` | Define a quantidade de workers paralelos |
 
 Exemplos de filtro:
 
 ```text
-Category=Smoke
-Category=Regression
+Category=E2E
+Category=Compra
 ```
 
-Se `testFilter` ficar vazio, a pipeline roda todos os 53 testes.
+Se `testFilter` ficar vazio, a pipeline roda todos os 10 cenarios.
 
 ### Stages no Azure
 
@@ -353,13 +344,13 @@ dotnet test --settings nunit.runsettings --list-tests --no-build
 Contar testes de compra:
 
 ```powershell
-dotnet test --settings nunit.runsettings --list-tests --no-build | Select-String "RealizarCompra_" | Measure-Object
+dotnet test --settings nunit.runsettings --list-tests --no-build | Select-String "Cenario_" | Measure-Object
 ```
 
-Rodar Regression com 8 workers manualmente:
+Rodar cenarios de compra com 8 workers manualmente:
 
 ```bash
-dotnet test --settings nunit.runsettings --filter "Category=Regression" -- NUnit.NumberOfTestWorkers=8
+dotnet test --settings nunit.runsettings --filter "Category=Compra" -- NUnit.NumberOfTestWorkers=8
 ```
 
 ## Observacoes
