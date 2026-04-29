@@ -1,5 +1,7 @@
 name: QA Enterprise Pipeline
 
+run-name: "${{ github.workflow }} | ${{ github.ref_name }} | ${{ github.actor }}"
+
 on:
   pull_request:
     branches: [ main ]
@@ -7,55 +9,119 @@ on:
   push:
     branches: [ main ]
 
-jobs:
+  workflow_dispatch:
+    inputs:
+      test_filter:
+        description: "Filtro do dotnet test. Ex: Category=Smoke, Category=Regression ou vazio para todos."
+        required: false
+        default: ""
+      workers:
+        description: "Quantidade de workers paralelos do NUnit."
+        required: false
+        default: "4"
 
-  # 1. BUILD
+permissions:
+  contents: read
+  actions: read
+  checks: read
+
+concurrency:
+  group: qa-enterprise-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: 8.0.x
+  TEST_RESULTS_DIR: TestResults
+  REPORTS_DIR: reports
+  TRX_FILE: e2e.trx
+  NUNIT_WORKERS: ${{ github.event.inputs.workers || '4' }}
+  TEST_FILTER: ${{ github.event.inputs.test_filter || '' }}
+
+jobs:
   build:
-    name: Build & Setup
+    name: Build & Restore
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - run: dotnet restore
-      - run: dotnet build --no-restore
+      - name: Restore dependencies
+        run: dotnet restore
 
-  # 2. E2E TESTS
+      - name: Build solution
+        run: dotnet build --no-restore
+
   e2e-tests:
-    name: E2E Tests Parallel (4 workers)
+    name: E2E Tests Parallel (${{ github.event.inputs.workers || '4' }} workers)
     runs-on: ubuntu-latest
     needs: build
-    env:
-      NUNIT_WORKERS: 4
+    timeout-minutes: 90
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - run: dotnet restore
-      - run: dotnet build --no-restore
+      - name: Restore dependencies
+        run: dotnet restore
 
-      - name: Install Playwright Browsers
+      - name: Build test project
+        run: dotnet build --no-restore
+
+      - name: Install Playwright browsers
         run: pwsh bin/Debug/net8.0/playwright.ps1 install --with-deps
 
-      - name: Run E2E Tests in Parallel
-        run: dotnet test --settings nunit.runsettings --results-directory TestResults --logger "trx;LogFileName=e2e.trx"
+      - name: Show execution configuration
+        shell: pwsh
+        run: |
+          "## QA Execution Configuration" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          "| Item | Value |" >> $env:GITHUB_STEP_SUMMARY
+          "| --- | --- |" >> $env:GITHUB_STEP_SUMMARY
+          "| Branch | $env:GITHUB_REF_NAME |" >> $env:GITHUB_STEP_SUMMARY
+          "| Commit | $env:GITHUB_SHA |" >> $env:GITHUB_STEP_SUMMARY
+          "| Trigger | $env:GITHUB_EVENT_NAME |" >> $env:GITHUB_STEP_SUMMARY
+          "| .NET | $env:DOTNET_VERSION |" >> $env:GITHUB_STEP_SUMMARY
+          "| Execution mode | Parallel |" >> $env:GITHUB_STEP_SUMMARY
+          "| NUnit workers | $env:NUNIT_WORKERS |" >> $env:GITHUB_STEP_SUMMARY
+          "| Test filter | $env:TEST_FILTER |" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
 
-      - name: Generate Test Report
+      - name: Run E2E tests in parallel
+        shell: pwsh
+        run: |
+          $args = @(
+            "test",
+            "--settings", "nunit.runsettings",
+            "--results-directory", $env:TEST_RESULTS_DIR,
+            "--logger", "trx;LogFileName=$env:TRX_FILE"
+          )
+
+          if (![string]::IsNullOrWhiteSpace($env:TEST_FILTER)) {
+            $args += @("--filter", $env:TEST_FILTER)
+          }
+
+          dotnet @args -- NUnit.NumberOfTestWorkers=$env:NUNIT_WORKERS
+
+      - name: Generate enterprise test report
         if: always()
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path reports | Out-Null
+          New-Item -ItemType Directory -Force -Path $env:REPORTS_DIR | Out-Null
 
-          $reportPath = "reports/e2e-summary.md"
-          $trxPath = "TestResults/e2e.trx"
+          $reportPath = Join-Path $env:REPORTS_DIR "e2e-summary.md"
+          $trxPath = Join-Path $env:TEST_RESULTS_DIR $env:TRX_FILE
 
           if (!(Test-Path $trxPath)) {
             "# E2E Test Report`n`nTRX file was not generated." | Set-Content $reportPath
@@ -70,8 +136,16 @@ jobs:
           $lines = @(
             "# E2E Test Report",
             "",
-            "**Execution mode:** Parallel",
-            "**NUnit workers:** $env:NUNIT_WORKERS",
+            "## Execution",
+            "",
+            "| Item | Value |",
+            "| --- | --- |",
+            "| Mode | Parallel |",
+            "| NUnit workers | $env:NUNIT_WORKERS |",
+            "| Test filter | $env:TEST_FILTER |",
+            "| Results file | $trxPath |",
+            "",
+            "## Results",
             "",
             "| Total | Passed | Failed | Skipped |",
             "| ---: | ---: | ---: | ---: |",
@@ -91,34 +165,38 @@ jobs:
           $lines | Set-Content $reportPath
           Get-Content $reportPath >> $env:GITHUB_STEP_SUMMARY
 
-      - name: Upload Test Results
+      - name: Upload TRX test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
-          path: TestResults/e2e.trx
+          name: test-results-trx
+          path: ${{ env.TEST_RESULTS_DIR }}/${{ env.TRX_FILE }}
           if-no-files-found: error
+          retention-days: 14
 
-      - name: Upload Reports
+      - name: Upload Markdown reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: reports
-          path: reports/
+          name: test-reports
+          path: ${{ env.REPORTS_DIR }}/
           if-no-files-found: error
+          retention-days: 14
 
-      - name: Upload Videos
+      - name: Upload Playwright videos
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: videos
+          name: playwright-videos
           path: "**/videos/*.webm"
           if-no-files-found: ignore
+          retention-days: 7
 
-      - name: Upload Screenshots
+      - name: Upload failure screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: screenshots
+          name: failure-screenshots
           path: "**/screenshots/*.png"
           if-no-files-found: ignore
+          retention-days: 7
