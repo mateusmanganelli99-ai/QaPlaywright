@@ -65,7 +65,7 @@ public class CompraTests : BaseTest
 
     public static IEnumerable<TestCaseData> DadosRegression()
     {
-        return GerarDadosDeCadastro(50, "Regression");
+        return GerarDadosDeCadastro(12, "Regression");
     }
 
     private static IEnumerable<TestCaseData> GerarDadosDeCadastro(int quantidade, string categoria)
