@@ -44,7 +44,47 @@ jobs:
         run: pwsh bin/Debug/net8.0/playwright.ps1 install --with-deps
 
       - name: Run E2E Tests
-        run: dotnet test --logger "trx;LogFileName=e2e.trx"
+        run: dotnet test --results-directory TestResults --logger "trx;LogFileName=e2e.trx"
+
+      - name: Generate Test Report
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+
+          $reportPath = "reports/e2e-summary.md"
+          $trxPath = "TestResults/e2e.trx"
+
+          if (!(Test-Path $trxPath)) {
+            "# E2E Test Report`n`nTRX file was not generated." | Set-Content $reportPath
+            Get-Content $reportPath >> $env:GITHUB_STEP_SUMMARY
+            exit 0
+          }
+
+          [xml]$trx = Get-Content $trxPath
+          $counters = $trx.SelectSingleNode("//*[local-name()='Counters']")
+          $failedResults = $trx.SelectNodes("//*[local-name()='UnitTestResult' and @outcome!='Passed']")
+
+          $lines = @(
+            "# E2E Test Report",
+            "",
+            "| Total | Passed | Failed | Skipped |",
+            "| ---: | ---: | ---: | ---: |",
+            "| $($counters.total) | $($counters.passed) | $($counters.failed) | $($counters.notExecuted) |",
+            ""
+          )
+
+          if ($failedResults.Count -gt 0) {
+            $lines += "## Failed Tests"
+            $lines += ""
+
+            foreach ($result in $failedResults) {
+              $lines += "- $($result.testName): $($result.outcome)"
+            }
+          }
+
+          $lines | Set-Content $reportPath
+          Get-Content $reportPath >> $env:GITHUB_STEP_SUMMARY
 
       - name: Upload Test Results
         if: always()
@@ -52,6 +92,15 @@ jobs:
         with:
           name: test-results
           path: TestResults/e2e.trx
+          if-no-files-found: error
+
+      - name: Upload Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: reports/
+          if-no-files-found: error
 
       - name: Upload Videos
         if: always()
@@ -59,6 +108,7 @@ jobs:
         with:
           name: videos
           path: videos/
+          if-no-files-found: ignore
 
       - name: Upload Screenshots
         if: always()
@@ -66,3 +116,4 @@ jobs:
         with:
           name: screenshots
           path: screenshots/
+          if-no-files-found: ignore
